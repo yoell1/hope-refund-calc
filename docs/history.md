@@ -2,6 +2,12 @@
 
 > 기능 구현 · 리팩터링 · 버그 수정을 마칠 때마다 아래 형식으로 기록한다. 최신 작업이 위로 오게 쌓고, 지난 기록은 지우지 않는다.
 
+### [2026-11-02] DB 작업 파일 database/ 폴더로 이동 (이우진 · feature/database)
+- **작업 내용**: DB 작업 파일(01~08 · 79~99 · README · cp949/ · 가상데이터/ · 비교통계/ · 새목록/ · 카드내역 업로드 예시)을 `database/`에 넣음 · `cp949/`에 빠져 있던 `79_v4.0에서_v4.1로.sql` 추가 (UTF-8 원본을 CP949로 변환만 함)
+- **변경 사유**: AGENTS.md 폴더 구조(`database/` = DB 작업 파일 01~99번 · README · cp949/)에 맞추기 위해
+- **검증 결과**: 11/02 v4.1 DB 작업 파일을 그대로 옮김 (cp949/79번만 새로 변환) · DB 접속 정보 없음 확인 · 같은 날 back → calc → 교육원 DB로 1번 회원 계산·혜택 진단·저장 확인 (결정세액 134,458 · 환급 예상 179,132 · PREDICTION_DETAIL 15행)
+- **미검증**: cp949/79번을 SQL Developer에서 직접 열어 보지는 않음
+
 ### [2026-11-02] 세액 계산 · 카드 공제 · 청년 혜택 진단 + FastAPI (이우진 · feature/tax-calc)
 - **작업 내용**: `services/bracket.py`(구간 계산 하나) · `tax_rules.py`(근로소득세액공제 한도식 · 원 미만 버림) · `card_deduction.py`(문턱 25% · 공제율 낮은 항목부터 문턱 · 기본·추가한도 · 초과분 음수 행) · `tax_calculator.py`(F-10·F-11 · 표준세액공제 13만과 「건강·고용보험료 + 월세」 중 결정세액이 작은 쪽) · `benefit.py`(F-12 · BENEFIT_CONDITION 행으로 판정) · `repositories/`(기준값 읽기 전용 · 연도+코드+총급여 구간) · `api/`(POST /calculate · /benefit · 토큰 검사) · 오류 응답 {"error","message"}
 - **변경 사유**: TT-10 [BE] 세액 계산·진단 · Spring prediction/의 가짜 계산을 실제 계산으로 바꾸기 위해
