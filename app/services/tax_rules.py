@@ -1,0 +1,32 @@
+"""세법 숫자 중 DB 구간표에 넣지 않고 코드에 둔 것 (11/02 결정 · 노션 「청년 대상 - 공제 항목 및 기능 정리」 구간표 D).
+
+- 근로소득세액공제 총급여별 한도: max() 조건이 있어 TAX_BRACKET 형식에 안 맞음 (국세청 신고안내 162p · 소득세법 §59)
+- 원 미만 처리: 원 미만 버림 (멘토링에서 확정 전 · 바뀌면 floor_won 하나만 고치면 됨)
+"""
+
+from decimal import ROUND_FLOOR, Decimal
+
+
+def floor_won(value) -> int:
+    """원 미만 버림. 금액 계산 결과는 모두 이 함수를 거쳐 정수로 만든다."""
+    return int(Decimal(str(value)).to_integral_value(rounding=ROUND_FLOOR))
+
+
+def percent_of(amount: int, rate) -> int:
+    """amount × rate% (원 미만 버림). rate는 DB RATE 값(15 = 15%)."""
+    return floor_won(Decimal(amount) * Decimal(str(rate)) / Decimal(100))
+
+
+def earned_credit_limit(total_salary: int) -> int:
+    """근로소득세액공제 한도 (총급여 기준 · 책자 162p).
+
+    3,300만 이하 74만 / 7천만 이하 max(66만, 74만 - (총급여 - 3,300만) × 0.8%)
+    1.2억 이하 max(50만, 66만 - (총급여 - 7천만) × 1/2) / 초과 max(20만, 50만 - (총급여 - 1.2억) × 1/2)
+    """
+    if total_salary <= 33_000_000:
+        return 740_000
+    if total_salary <= 70_000_000:
+        return max(660_000, 740_000 - floor_won(Decimal(total_salary - 33_000_000) * Decimal("0.008")))
+    if total_salary <= 120_000_000:
+        return max(500_000, 660_000 - floor_won(Decimal(total_salary - 70_000_000) / 2))
+    return max(200_000, 500_000 - floor_won(Decimal(total_salary - 120_000_000) / 2))
