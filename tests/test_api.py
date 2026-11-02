@@ -5,12 +5,14 @@ from app.api.deps import get_criteria
 from app.main import app
 from tests.criteria_data import criteria
 
+TOKEN = "test-token"
+
 
 @pytest.fixture
 def client(monkeypatch):
-    monkeypatch.delenv("CALC_API_TOKEN", raising=False)
+    monkeypatch.setenv("CALC_API_TOKEN", TOKEN)
     app.dependency_overrides[get_criteria] = criteria
-    yield TestClient(app)
+    yield TestClient(app, headers={"X-Calc-Token": TOKEN})
     app.dependency_overrides.clear()
 
 
@@ -41,10 +43,17 @@ def test_기준값_없는_연도(client):
     assert response.json() == {"error": "NO_CRITERIA", "message": "해당 연도 기준값이 없어요"}
 
 
-def test_토큰이_설정되면_없는_요청은_막는다(client, monkeypatch):
-    monkeypatch.setenv("CALC_API_TOKEN", "secret")
-    assert client.post("/calculate", json=BODY).status_code == 401
-    assert client.post("/calculate", json=BODY, headers={"X-Calc-Token": "secret"}).status_code == 200
+def test_토큰이_틀리거나_없으면_막는다(client):
+    assert client.post("/calculate", json=BODY, headers={"X-Calc-Token": "wrong"}).status_code == 401
+    no_header = TestClient(app)
+    assert no_header.post("/calculate", json=BODY).status_code == 401
+
+
+def test_서버에_토큰이_설정되지_않으면_모두_막는다(client, monkeypatch):
+    monkeypatch.delenv("CALC_API_TOKEN")
+    response = client.post("/calculate", json=BODY)
+    assert response.status_code == 503
+    assert response.json()["error"] == "TOKEN_NOT_SET"
 
 
 def test_혜택_진단(client):
