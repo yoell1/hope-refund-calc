@@ -69,6 +69,17 @@ def test_중소기업_감면은_산출세액의_90퍼센트_200만_한도():
     assert reduction == min(result.calculated_tax * 90 // 100, 2_000_000)
 
 
+def test_감면을_받으면_근로소득세액공제가_감면비율만큼_줄어든다():
+    # 국세청 「중소기업 취업자 소득세 감면제도 안내」(2023.6) p.10: 감면 전 공제 × (1 − 감면세액 ÷ 산출세액)
+    base = calculate(criteria(), _example(total_salary=36_000_000, withheld_tax=2_000_000))
+    sme = calculate(criteria(), _example(total_salary=36_000_000, withheld_tax=2_000_000, sme_reduction_yn="Y"))
+    before = _row(base, "EARNED_CREDIT").deduction_amount
+    reduction = _row(sme, "SME_YOUTH").deduction_amount
+    credit = _row(sme, "EARNED_CREDIT").deduction_amount
+    assert credit == before * (sme.calculated_tax - reduction) // sme.calculated_tax
+    assert credit < before
+
+
 def test_세액공제는_산출세액을_넘지_않는다():
     result = calculate(criteria(), _example(total_salary=20_000_000, withheld_tax=0, pension_saving=6_000_000))
     assert result.decided_tax == 0

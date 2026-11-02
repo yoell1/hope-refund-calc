@@ -2,6 +2,7 @@
 
 - 근로소득세액공제 총급여별 한도: max() 조건이 있어 TAX_BRACKET 형식에 안 맞음 (국세청 신고안내 162p · 소득세법 §59)
 - 원 미만 처리: 원 미만 버림 (멘토링에서 확정 전 · 바뀌면 floor_won 하나만 고치면 됨)
+- 감면을 받을 때 근로소득세액공제 줄이기: 국세청 「중소기업 취업자 소득세 감면제도 안내」(2023.6) p.10~12
 """
 
 from decimal import ROUND_FLOOR, Decimal
@@ -30,3 +31,15 @@ def earned_credit_limit(total_salary: int) -> int:
     if total_salary <= 120_000_000:
         return max(500_000, 660_000 - floor_won(Decimal(total_salary - 70_000_000) / 2))
     return max(200_000, 500_000 - floor_won(Decimal(total_salary - 120_000_000) / 2))
+
+
+def earned_credit_after_reduction(credit_before: int, reduction: int, calculated_tax: int) -> int:
+    """세액감면을 받을 때 근로소득세액공제 (원 미만 버림).
+
+    감면 적용 전 근로소득세액공제 × (1 − 감면세액 ÷ 산출세액)
+    근거: 국세청 「중소기업 취업자 소득세 감면제도 안내」(2023.6) p.10 계산식 · p.11~12 계산 사례
+    예) 716,000 × (1 − 1,748,250 ÷ 1,942,500) = 71,600
+    """
+    if reduction <= 0 or calculated_tax <= 0:
+        return credit_before
+    return credit_before * (calculated_tax - reduction) // calculated_tax
