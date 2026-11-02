@@ -17,7 +17,7 @@ from app.services.bracket import calc_bracket
 from app.services.card_deduction import calc_card_deduction
 from app.services.errors import NoCriteriaError
 from app.services.models import CalcInput, CalcResult, Detail
-from app.services.tax_rules import earned_credit_limit, percent_of
+from app.services.tax_rules import earned_credit_after_reduction, earned_credit_limit, percent_of
 
 
 @dataclass
@@ -109,11 +109,15 @@ def calculate(source: CriteriaSource, data: CalcInput) -> CalcResult:
             applied[code] = used
             left -= used
 
-        # 감면 (중소기업 취업자 · 신청한 경우 · 산출세액 × 90% · 연 200만 한도)
+        # 감면 (중소기업 취업자 · 신청 + 진단 해당인 경우 · 산출세액 × 90% · 연 200만 한도)
+        reduction = 0
         if sme_row is not None and data.sme_reduction_yn == "Y":
             apply("SME_YOUTH", min(percent_of(calculated, sme_row.rate), sme_row.limit_amount or 0))
+            reduction = applied["SME_YOUTH"]
         # 근로소득세액공제 (구간표 + 총급여별 한도)
-        apply("EARNED_CREDIT", min(calc_bracket(calculated, credit_brackets), earned_credit_limit(salary)))
+        # 감면을 받으면 × (1 − 감면세액 ÷ 산출세액) · 국세청 「중소기업 취업자 소득세 감면제도 안내」 p.10
+        credit_before = min(calc_bracket(calculated, credit_brackets), earned_credit_limit(salary))
+        apply("EARNED_CREDIT", earned_credit_after_reduction(credit_before, reduction, calculated))
         # 연금계좌 (연금저축은 단독 600만까지 · IRP 합산 900만 한도)
         if account_row is not None:
             saving = min(data.pension_saving, saving_limit_row.limit_amount) if saving_limit_row and \
