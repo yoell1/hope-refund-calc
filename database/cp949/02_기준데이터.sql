@@ -2,6 +2,8 @@
 -- 근거: 국세청 「2025년 원천징수의무자를 위한 연말정산 신고안내」(26.02.03 수정본) + 국가법령정보센터 현행 조문
 --       (노션 「청년 대상 - 공제 항목 및 기능 정리」 > 세법 기준값 표를 그대로 옮김)
 -- 금액 단위: 원 · 비율 단위: % (RATE 15 = 15%)
+-- v4.1: 2-3) 연금저축 단독 한도 PENSION_SAVING_LIMIT(600만) × 2026·2025 귀속 2행 (기준값 50 → 52행 · 11/02)
+-- v4.0: 2-2) 근로소득공제·근로소득세액공제 항목 행 4행 (46 → 50행 · 10/30)
 -- v3.9: DEDUCTION_TYPE 2026 귀속 3행 추가(국민연금·건강보험료 공제 · 표준세액공제 13만원 · 22 → 25행) + 2025 귀속 기준값 전체(DEDUCTION_TYPE 21 · TAX_BRACKET 15 · BENEFIT_CONDITION 3 · 1~3월은 작년 기준으로 계산 · 10/29 팀 결정)
 -- v3.8: 5) 그룹 비교 통계 STAT_FILE 4행 · GROUP_STAT 28행 추가 (D-11 · 국세통계 2024년 귀속 · 10/28)
 -- v3.6: DEDUCTION_TYPE 맨 뒤 SALARY_MIN(총급여 구간 시작) → 각 INSERT 끝에 0 또는 구간 시작값 · SALARY_LIMIT → SALARY_MAX · _LOW/_HIGH 코드를 구간 행으로 통합 (10/27)
@@ -52,7 +54,7 @@ INSERT INTO DEDUCTION_TYPE VALUES (SEQ_DEDUCTION_TYPE.NEXTVAL, 2026, 'RENT',    
 
 -- 세액감면 (책자 148·150p · 조특법 §30)
 INSERT INTO DEDUCTION_TYPE VALUES (SEQ_DEDUCTION_TYPE.NEXTVAL, 2026, 'SME_YOUTH',        '중소기업 취업자 소득세 감면',   'TAX_REDUCTION', 90, 2000000, NULL, NULL, NULL, '국세청 신고안내 148·150p · 조특법 §30', SYSDATE, NULL, 0);
--- ※ 연금계좌 한도 900만 = 연금저축 600만 + 퇴직연금(IRP) 합산. 연금저축 단독 600만 한도는 계산 코드에서 처리
+-- ※ 연금계좌 한도 900만 = 연금저축 600만 + 퇴직연금(IRP) 합산. 연금저축 단독 600만 한도는 2-3) PENSION_SAVING_LIMIT 행 (v4.1 · 입력도 연금저축 PENSION_SAVING / IRP IRP_SAVING 두 칸)
 -- 카드 기본한도 자녀 가산 (v3.3 · 조특법 §126의2⑩ 2025.12.23 개정 · 2026.1.1 이후 시작 과세기간 = 2026 귀속부터)
 --   자녀등 = 20세 이하 직계비속·입양자·위탁아동 중 소득금액 100만 이하(근로소득만이면 총급여 500만 이하) · 다른 사람 기본공제 대상 아님 (조특령 §121의2 제18항)
 --   INCOME.CHILDREN 0이면 CARD_LIMIT_BASE, 1이면 CHILD1, 2 이상이면 CHILD2 · 그 코드 안에서 총급여 구간(SALARY_MIN~MAX)으로 행 선택 (v3.6) · 추가한도(EXTRA)는 자녀 수와 무관
@@ -106,6 +108,13 @@ INSERT INTO DEDUCTION_TYPE VALUES (SEQ_DEDUCTION_TYPE.NEXTVAL, 2026, 'EARNED_DED
 INSERT INTO DEDUCTION_TYPE VALUES (SEQ_DEDUCTION_TYPE.NEXTVAL, 2026, 'EARNED_CREDIT',    '근로소득세액공제', 'TAX_CREDIT',       0, NULL,     NULL, NULL, NULL, '국세청 신고안내 162p · 소득세법 §59 (공제율·구간은 TAX_BRACKET EARNED_CREDIT · 총급여별 한도는 계산 코드)', SYSDATE, NULL, 0);
 INSERT INTO DEDUCTION_TYPE VALUES (SEQ_DEDUCTION_TYPE.NEXTVAL, 2025, 'EARNED_DEDUCTION', '근로소득공제',     'INCOME_DEDUCTION', 0, 20000000, NULL, NULL, NULL, '국세청 신고안내 94p · 소득세법 §47 (공제율·구간은 TAX_BRACKET EARNED_DEDUCTION · 공제액 최대 2,000만)', SYSDATE, NULL, 0);
 INSERT INTO DEDUCTION_TYPE VALUES (SEQ_DEDUCTION_TYPE.NEXTVAL, 2025, 'EARNED_CREDIT',    '근로소득세액공제', 'TAX_CREDIT',       0, NULL,     NULL, NULL, NULL, '국세청 신고안내 162p · 소득세법 §59 (공제율·구간은 TAX_BRACKET EARNED_CREDIT · 총급여별 한도는 계산 코드)', SYSDATE, NULL, 0);
+
+-- ─────────────────────────────────────────────
+-- 2-3) 연금저축 단독 한도 (v4.1 · 11/02) - 연금계좌 900만(PENSION 행) 중 연금저축은 600만까지 (소득세법 §59의3)
+--      RATE 0 · 공제율은 PENSION 행 · 맨 뒤에 넣은 이유: 이미 적재한 계정에 79로 추가해도 TYPE_ID(51~52)가 새 계정과 같게 (공용 DB는 다를 수 있음 → TYPE_CODE로 찾기)
+-- ─────────────────────────────────────────────
+INSERT INTO DEDUCTION_TYPE VALUES (SEQ_DEDUCTION_TYPE.NEXTVAL, 2026, 'PENSION_SAVING_LIMIT', '연금저축 단독 한도', 'TAX_CREDIT', 0, 6000000, NULL, NULL, NULL, '국세청 신고안내 요약표 · 소득세법 §59의3 (연금계좌 900만 중 연금저축은 600만까지 · 공제율은 PENSION 행)', SYSDATE, NULL, 0);
+INSERT INTO DEDUCTION_TYPE VALUES (SEQ_DEDUCTION_TYPE.NEXTVAL, 2025, 'PENSION_SAVING_LIMIT', '연금저축 단독 한도', 'TAX_CREDIT', 0, 6000000, NULL, NULL, NULL, '국세청 신고안내 요약표 · 소득세법 §59의3 (연금계좌 900만 중 연금저축은 600만까지 · 공제율은 PENSION 행)', SYSDATE, NULL, 0);
 
 -- ─────────────────────────────────────────────
 -- 3) 구간표 TAX_BRACKET (2026년 귀속)

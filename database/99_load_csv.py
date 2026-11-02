@@ -76,7 +76,7 @@ def main():
         for c in df.columns:   # 숫자 칸은 숫자로
             if (c.endswith("_ID") and c != "LOGIN_ID") or c in ("TAX_YEAR", "TOTAL_SALARY", "WITHHELD_TAX", "NATIONAL_PENSION", "HEALTH_INSURANCE", "DEPENDENTS",
                                           "MONTHLY_RENT", "HOUSING_SAVING", "PENSION_SAVING", "MILITARY_MONTHS",
-                                          "ROW_COUNT", "AMOUNT", "LOGIN_FAIL_COUNT", "CHILDREN"):   # v3.3 CHILDREN
+                                          "ROW_COUNT", "AMOUNT", "LOGIN_FAIL_COUNT", "CHILDREN", "IRP_SAVING"):   # v3.3 CHILDREN · v4.1 IRP_SAVING
                 df[c] = pd.to_numeric(df[c].replace("", None))
         cols = list(df.columns)
         sql = f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({', '.join(':' + str(i + 1) for i in range(len(cols)))})"
