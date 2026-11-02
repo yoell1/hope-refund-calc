@@ -105,7 +105,7 @@ for i in range(1, N_MEMBER + 1):
     health_ins = int((Decimal(sal) * Decimal(d["ins"] / d["sal"]).quantize(Decimal("0.0000001")) / 10).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * 10)
     persons = d["basic_amt"] * 1e6 / 1_500_000 / d["basic_n"] if d["basic_n"] else 1
     dependents = int(min(rng.poisson(max(persons - 1, 0)), 6))
-    rent = house = pension = 0
+    rent = house = pension = irp = 0
     if rng.random() < rate(lab, "rent_n"):
         credit = d["rent_amt"] * 1e6 / d["rent_n"]
         rent_year = min(credit / (0.17 if sal <= 55_000_000 else 0.15), 10_000_000)
@@ -114,6 +114,8 @@ for i in range(1, N_MEMBER + 1):
         house = int(round(min(d["house_amt"] * 1e6 / d["house_n"] / 0.40, 3_000_000), -4))
     if rng.random() < rate(lab, "pen_n"):
         pension = int(round(min(d["pen_amt"] * 1e6 / d["pen_n"] / (0.15 if sal <= 55_000_000 else 0.12), 9_000_000), -4))
+        if pension > 6_000_000:   # v4.1 통계는 연금계좌(연금저축 + IRP) 합계 → 연금저축 600만 한도를 넘는 부분은 IRP로 (합계·공제액 그대로)
+            pension, irp = 6_000_000, pension - 6_000_000
     youth = age <= 34
     sme = youth and rng.random() < min(rate(lab, "sme_n") / max(youth_share, 1e-9), 0.9)
     homeless = "Y" if (rent or house) else "N"
@@ -138,7 +140,7 @@ for i in range(1, N_MEMBER + 1):
                         UPDATED_AT=dt.date(TAX_YEAR, 10, 20).isoformat(),
                         CREATED_AT=dt.date(TAX_YEAR, 10, 20).isoformat(),   # v2.8 등록일 (가상 데이터는 수정일과 같게)
                         DATA_ORIGIN="GENERATED",   # v2.9 데이터 구분 = 생성
-                        CHILDREN=0, HEALTH_INSURANCE=health_ins))   # v3.9 건강·고용보험료 맨 뒤 · v3.3 20세 이하 자녀 수 - 급여구간별 자녀 수 공공 통계가 없어 0으로 둠 (자녀 한도는 사이트 입력값으로 확인)
+                        CHILDREN=0, HEALTH_INSURANCE=health_ins, IRP_SAVING=irp))   # v4.1 연금 600만 초과분은 IRP · v3.9 건강·고용보험료 맨 뒤 · v3.3 20세 이하 자녀 수 - 급여구간별 자녀 수 공공 통계가 없어 0으로 둠 (자녀 한도는 사이트 입력값으로 확인)
 # 관리자 1명 (P1 관리자 화면 테스트용)
 members.append(dict(MEMBER_ID=N_MEMBER + 1, LOGIN_ID="admin", EMAIL="admin@example.com", PASSWORD=pw_hash, NAME="관리자",
                     BIRTH_DATE="1990-01-01", GENDER="", MILITARY_MONTHS=0, HIRE_DATE="", COMPANY_SIZE="",
