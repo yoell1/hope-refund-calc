@@ -5,6 +5,7 @@
 """
 
 import logging
+import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -17,6 +18,8 @@ from app.services.errors import NoCriteriaError
 
 load_dotenv()
 log = logging.getLogger("calc")
+if not os.environ.get("CALC_API_TOKEN"):
+    log.error("CALC_API_TOKEN이 비어 있어요. .env에 넣기 전까지 모든 계산 요청을 막아요")
 
 app = FastAPI(title="희망환급 계산 서버", docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(calculate.router)
@@ -41,6 +44,8 @@ def invalid(_: Request, e: RequestValidationError) -> JSONResponse:
 def http_error(_: Request, e: HTTPException) -> JSONResponse:
     if e.status_code == 401:
         return _error(401, "UNAUTHORIZED", "허용되지 않은 요청이에요")
+    if e.status_code == 503:
+        return _error(503, "TOKEN_NOT_SET", "계산 서버 설정이 끝나지 않았어요")
     return _error(e.status_code, "HTTP_ERROR", "요청을 처리할 수 없어요")
 
 
