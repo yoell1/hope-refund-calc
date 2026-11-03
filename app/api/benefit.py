@@ -1,5 +1,7 @@
 """POST /benefit · 청년 혜택 자격 진단."""
 
+import logging
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -10,14 +12,19 @@ from app.schemas.benefit import BenefitRequest, BenefitResponse, BenefitResultRe
 from app.services.benefit import BenefitInput, diagnose
 
 router = APIRouter(dependencies=[Depends(check_token)])
+log = logging.getLogger("calc")
 
 
 @router.post("/benefit", response_model=BenefitResponse, response_model_by_alias=True)
 def benefit_api(req: BenefitRequest, criteria: Annotated[CriteriaSource, Depends(get_criteria)]) -> BenefitResponse:
+    started = time.perf_counter()
     data = BenefitInput(
         tax_year=req.tax_year, total_salary=req.total_salary, birth_date=req.birth_date,
         military_months=req.military_months, hire_date=req.hire_date, company_size=req.company_size,
         homeless_head_yn=req.homeless_head_yn,
     )
     results = diagnose(criteria, data)
+    # 혜택 코드와 판정만 남긴다 (생년월일 · 입사일은 남기지 않음)
+    log.info("혜택 진단 year=%s results=%s %.0fms", req.tax_year,
+             [f"{r.benefit_code}={r.eligible}" for r in results], (time.perf_counter() - started) * 1000)
     return BenefitResponse(tax_year=req.tax_year, results=[BenefitResultResponse(**vars(r)) for r in results])
