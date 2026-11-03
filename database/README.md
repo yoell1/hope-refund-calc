@@ -1,5 +1,34 @@
 # DB 작업 파일 (희망연봉2조 · DB·데이터 담당 이우진 · 11/02 v4.1)
 
+## 계산 서버 전용 읽기 계정 (11/03 · 최소 권한 · 구조 변경 없음)
+
+계산 서버(hope-refund-calc)는 기준값 테이블 3개(`DEDUCTION_TYPE` · `TAX_BRACKET` · `BENEFIT_CONDITION`)를 **읽기만** 해요.
+그래서 테이블 주인 계정 대신, 이 3개만 읽을 수 있는 계정을 따로 써요. 계산 서버에 문제가 생겨도 회원 정보를 읽거나 데이터를 고치·지울 수 없어요.
+
+- 계정 이름 · 비밀번호 · DB 주소: **팀 단톡에만** (노션 · GitHub에 적지 않음)
+- 계산 서버 `.env`의 `DB_USERNAME` · `DB_PASSWORD`에 이 계정을 넣어요
+- Spring 서버(back)는 소득 · 계산 결과를 저장해야 해서 테이블 주인 계정을 그대로 써요
+
+만드는 SQL (DB 관리자 계정으로 실행 · `<계산서버계정>` · `<비밀번호>` · `<주인계정>`은 실제 값으로 바꾸기):
+
+```sql
+CREATE USER <계산서버계정> IDENTIFIED BY "<비밀번호>";
+GRANT CREATE SESSION TO <계산서버계정>;
+
+GRANT SELECT ON <주인계정>.DEDUCTION_TYPE    TO <계산서버계정>;
+GRANT SELECT ON <주인계정>.TAX_BRACKET       TO <계산서버계정>;
+GRANT SELECT ON <주인계정>.BENEFIT_CONDITION TO <계산서버계정>;
+
+-- 계산 서버 코드가 테이블 이름만 쓰기 때문에 동의어로 연결 (코드 수정 없음)
+CREATE SYNONYM <계산서버계정>.DEDUCTION_TYPE    FOR <주인계정>.DEDUCTION_TYPE;
+CREATE SYNONYM <계산서버계정>.TAX_BRACKET       FOR <주인계정>.TAX_BRACKET;
+CREATE SYNONYM <계산서버계정>.BENEFIT_CONDITION FOR <주인계정>.BENEFIT_CONDITION;
+```
+
+확인 (새 계정으로 접속): 기준값 3개 `SELECT COUNT(*)`는 숫자 · `<주인계정>.MEMBER` 조회는 ORA-00942 · `DELETE`/`UPDATE`는 ORA-01031이 나오면 정상 (11/03 학원 DB에서 확인)
+
+**나중에 계산 서버가 다른 테이블을 읽게 되면** 그 테이블도 `GRANT SELECT` + `CREATE SYNONYM`을 추가해야 해요. 안 하면 계산 서버에서 ORA-00942가 나요.
+
 ## v4.1 (11/02 · 연금저축 단독 600만 한도 · 칸 2개 추가)
 
 - **INCOME · PREDICTION_INPUT 연금 칸 두 개로:** `PENSION_SAVING` = **연금저축만**(이름·자리 그대로 · 설명 변경) · **`IRP_SAVING`** = IRP(퇴직연금계좌) 연 납입액(맨 뒤 · 기본 0)
