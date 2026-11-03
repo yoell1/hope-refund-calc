@@ -66,3 +66,24 @@ def test_없는_주소는_짧은_안내만(client):
     response = client.get("/admin")
     assert response.status_code == 404
     assert set(response.json()) == {"error", "message"}
+
+
+def test_토큰이_틀리면_로그를_남기고_토큰_값은_남기지_않는다(client, caplog):
+    with caplog.at_level("WARNING", logger="calc"):
+        client.post("/calculate", json=BODY, headers={"X-Calc-Token": "wrong-secret"})
+    assert "토큰이 없거나 틀린 요청 차단" in caplog.text
+    assert "wrong-secret" not in caplog.text
+
+
+def test_계산_로그에는_금액을_남기지_않는다(client, caplog):
+    with caplog.at_level("INFO", logger="calc"):
+        client.post("/calculate", json=BODY)
+    assert "계산 완료 year=2026" in caplog.text
+    assert "30000000" not in caplog.text
+
+
+def test_입력값_검사_실패는_칸_이름만_남긴다(client, caplog):
+    with caplog.at_level("WARNING", logger="calc"):
+        client.post("/calculate", json={**BODY, "totalSalary": -123456})
+    assert "totalSalary" in caplog.text
+    assert "-123456" not in caplog.text
