@@ -1,11 +1,14 @@
 """DB에서 기준값 읽기 (읽기 전용 · 값은 바인드 변수로만 넣는다)."""
 
+import logging
 import time
 from decimal import Decimal
 
 from app.db.oracle import get_pool
 from app.repositories.criteria import BenefitCondition, DeductionType
 from app.services.bracket import Bracket
+
+log = logging.getLogger("calc")
 
 
 def _int(value) -> int | None:
@@ -29,6 +32,7 @@ class OracleCriteria:
         now = self._clock()
         hit = self._cache.get(key)
         if hit is None or now - hit[0] >= self._cache_seconds:
+            log.info("기준값 DB에서 읽음 %s", key)
             hit = (now, load())
             self._cache[key] = hit
         return hit[1]
