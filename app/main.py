@@ -18,6 +18,13 @@ from app.services.errors import NoCriteriaError
 
 load_dotenv()
 log = logging.getLogger("calc")
+# 로그 형식: 시각 · 수준 · 내용 (uvicorn 로그 설정은 건드리지 않고 calc 로거에만)
+# 규칙: 연도 · 처리 시간 · 결과 코드만 남기고 금액 · 생년월일 · 토큰은 남기지 않는다
+if not log.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s [calc] %(message)s"))
+    log.addHandler(_handler)
+    log.setLevel(logging.INFO)
 if not os.environ.get("CALC_API_TOKEN"):
     log.error("CALC_API_TOKEN이 비어 있어요. .env에 넣기 전까지 모든 계산 요청을 막아요")
 
@@ -37,6 +44,9 @@ def no_criteria(_: Request, e: NoCriteriaError) -> JSONResponse:
 
 @app.exception_handler(RequestValidationError)
 def invalid(_: Request, e: RequestValidationError) -> JSONResponse:
+    # 어느 칸이 틀렸는지만 남긴다 (입력한 값은 남기지 않음)
+    fields = sorted({".".join(str(p) for p in err.get("loc", ())) for err in e.errors()})
+    log.warning("입력값 검사 실패: %s", fields)
     return _error(400, "VALIDATION", "입력값을 확인해 주세요")
 
 
